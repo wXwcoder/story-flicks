@@ -1,14 +1,21 @@
 import os
 import time
 import json
+
 from typing import List
 from app.schemas.llm import StoryGenerationRequest
 from loguru import logger
 from app.models.const import StoryType, ImageStyle
-from app.schemas.video import VideoGenerateRequest, StoryScene
+from app.schemas.video import VideoGenerateRequest, StoryScene,VideoGenerateProgress
 from app.services.llm import llm_service
 from app.services.voice import generate_voice
 from app.utils import utils
+from fastapi import BackgroundTasks
+from app.utils.utils import extract_id
+
+# 任务状态存储字典
+task_status = {}
+
 from moviepy import (
     VideoFileClip,
     ImageClip,
@@ -82,7 +89,53 @@ def wrap_text(text, max_width, font="Arial", fontsize=60):
     # logger.warning(f"wrapped text: {result}")
     return result, height
 
-async def create_video_with_scenes(task_dir: str, scenes: List[StoryScene], voice_name: str, voice_rate: float, test_mode: bool = False) -> str:
+def update_task_progress(task_id: str, progress: int, state: str, result: str = ""):
+    task_status[task_id] = {
+        'progress': progress,
+        'state': state,
+        'result': result,
+        'error': None
+    }
+
+def get_task_progress(task_id: str):
+    return task_status.get(task_id)
+
+async def generate_video_background(task_id: str, request: VideoGenerateRequest):
+    try:
+        update_task_progress(task_id, 0, 'processing')
+        
+        # 获取任务目录
+        task_dir = utils.task_dir(task_id)
+        os.makedirs(task_dir, exist_ok=True)
+
+        request.task_id = task_id
+        # 实际生成视频的逻辑
+        video_file = await generate_video(request)
+        
+        # 保持原始task_id
+        # 使用统一的任务目录路径
+        video_url = f"/tasks/{task_id}/video.mp4"
+        video_file = os.path.join(utils.task_dir(task_id), "video.mp4")
+        logger.debug(f"生成的视频路径: {video_file}")
+        logger.debug(f"原始task_id: {task_id}")
+        logger.info(f"视频生成成功，访问地址: {video_url}")
+        logger.debug(f"更新任务状态前 task_id: {task_id}")
+        logger.debug(f"当前任务状态: {task_status.get(task_id)}")
+        
+        update_task_progress(task_id, 100, 'completed', video_url)
+        logger.debug(f"最终更新参数 - task_id: {task_id}, progress: 100, state: completed, result: {video_url}")
+        
+        logger.debug(f"更新后任务状态: {task_status.get(task_id)}")
+    except Exception as e:
+        logger.error(f"视频生成失败: {str(e)}")
+        logger.error(f"更新失败状态时 task_id: {task_id}")
+        logger.error(f"错误信息: {str(e)}")
+        update_task_progress(task_id, 0, 'failed', result=str(e))
+
+async def create_video_with_scenes(task_id: str, scenes: List[StoryScene], voice_name: str, voice_rate: float, test_mode: bool = False) -> str:
+    # 使用统一的任务目录路径
+    task_dir = utils.task_dir(task_id)
+    os.makedirs(task_dir, exist_ok=True)
     """创建带有场景的视频
 
     Args:
@@ -202,9 +255,9 @@ async def create_video_with_scenes(task_dir: str, scenes: List[StoryScene], voic
     # 合并所有片段
     logger.info("Merging all clips")
     final_clip = concatenate_videoclips(clips)
-    video_file = os.path.join(task_dir, "video.mp4")
+    video_file = os.path.join(utils.task_dir(task_id), "video.mp4")
     logger.info(f"Writing video to {video_file}")
-    final_clip.write_videofile(video_file, fps=24, codec='libx264', audio_codec='aac')
+    final_clip.write_videofile(video_file, fps=24, codec='libx264', audio_codec='aac', logger=None)
     
     return video_file
 
@@ -253,7 +306,7 @@ async def generate_video(request: VideoGenerateRequest):
             # 保存 story.json
             story_data = request.model_dump()
             story_data["scenes"] = [scene.model_dump() for scene in scenes]
-            task_id = str(int(time.time()))
+            task_id = request.task_id
             task_dir = utils.task_dir(task_id)
             os.makedirs(task_dir, exist_ok=True)
             story_file = os.path.join(task_dir, "story.json")
@@ -273,7 +326,14 @@ async def generate_video(request: VideoGenerateRequest):
                 json.dump(story_data, f, ensure_ascii=False, indent=2)
         # return ""
         # 生成视频
-        return await create_video_with_scenes(task_dir, scenes, request.voice_name, request.voice_rate, request.test_mode)
+        return await create_video_with_scenes(task_id, scenes, request.voice_name, request.voice_rate, request.test_mode)
     except Exception as e:
         logger.error(f"Failed to generate video: {e}")
         raise e
+
+async def get_video_progress(request: VideoGenerateProgress):
+    """生成视频
+
+    Args:
+        request (VideoGenerateRequest): 视频生成请求
+    """
