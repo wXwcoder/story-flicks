@@ -114,7 +114,7 @@ async def generate_video_background(task_id: str, request: VideoGenerateRequest)
         
         # 保持原始task_id
         # 使用统一的任务目录路径
-        video_url = f"/tasks/{task_id}/video.mp4"
+        video_url = f"https://backend-149289-6-1324589466.sh.run.tcloudbase.com/tasks/{task_id}/video.mp4"
         video_file = os.path.join(utils.task_dir(task_id), "video.mp4")
         logger.debug(f"生成的视频路径: {video_file}")
         logger.debug(f"原始task_id: {task_id}")

@@ -23,12 +23,12 @@ settings = get_settings()
 openai_client = None
 if settings.openai_api_key:
    openai_client = OpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url or "https://api.openai.com/v1")
-aliyun_text_client = None
-if settings.aliyun_api_key:
-    dashscope.api_key = settings.aliyun_api_key
-    aliyun_text_client = OpenAI(base_url=settings.aliyun_base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1", api_key=settings.aliyun_api_key) 
-if settings.deepseek_api_key:
-    deepseek_client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url or "https://api.deepseek.com/v1")
+#aliyun_text_client = None
+#if settings.aliyun_api_key:
+dashscope.api_key = settings.aliyun_api_key
+aliyun_text_client = OpenAI(base_url=settings.aliyun_base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1", api_key=settings.aliyun_api_key)
+#if settings.deepseek_api_key:
+deepseek_client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url or "https://api.deepseek.com/v1")
 if settings.ollama_api_key:
     ollama_client = OpenAI(api_key=settings.ollama_api_key, base_url=settings.ollama_base_url or "http://localhost:11434/v1")
 if settings.siliconflow_api_key:
