@@ -316,3 +316,9 @@ class VideoGenerateResponse(BaseModel):
     success: bool
     data: Optional[Dict[str, Any]] = None
     message: Optional[str] = None
+
+class VideoGenerateProgress(BaseModel):
+    """视频生成进度响应"""
+    success: bool
+    data: Optional[Dict[str, Any]] = None
+    message: Optional[str] = None

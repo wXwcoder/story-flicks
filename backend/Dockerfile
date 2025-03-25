@@ -5,14 +5,14 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # 复制项目的 requirements.txt
-COPY backend/requirements.txt /app/
+COPY ./requirements.txt /app/
 
 # 配置 pip 使用阿里云镜像并安装依赖
 RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
     && pip install --no-cache-dir -r requirements.txt
 
 # 复制整个后端项目到容器
-COPY backend /app/
+COPY ./ /app/
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1

@@ -218,6 +218,7 @@ async def generate_video(request: VideoGenerateRequest):
     try:
         # 测试模式下，从 story.json 中读取请求参数
         if request.test_mode:
+            print("Test mode")
             task_id = request.task_id or str(int(time.time()))
             task_dir = utils.task_dir(task_id)
             if not os.path.exists(task_dir):
@@ -235,6 +236,7 @@ async def generate_video(request: VideoGenerateRequest):
             request.test_mode = True
             scenes = [StoryScene(**scene) for scene in story_data.get("scenes", [])]
         else:
+            print("std mode")
             req = StoryGenerationRequest(
                 resolution=request.resolution,
                 story_prompt=request.story_prompt,
